@@ -27,6 +27,7 @@
 #pragma once
 
 #include <libfreenect.h>
+#include <libfreenect-registration.h>
 #include <stdexcept>
 #include <map>
 #include <pthread.h>
@@ -65,7 +66,7 @@ namespace Freenect {
 			if(freenect_open_device(_ctx, &m_dev, _index) < 0) throw std::runtime_error("Cannot open Kinect");
 			freenect_set_user(m_dev, this);
 			freenect_set_video_mode(m_dev, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB));
-			freenect_set_depth_mode(m_dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_11BIT));
+			freenect_set_depth_mode(m_dev, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_REGISTERED));
 			freenect_set_depth_callback(m_dev, freenect_depth_callback);
 			freenect_set_video_callback(m_dev, freenect_video_callback);
 		}
@@ -122,6 +123,11 @@ namespace Freenect {
 		freenect_depth_format getDepthFormat() {
 			return m_depth_format;
 		}
+		
+		freenect_device* getDevice() {
+			return m_dev;
+		}
+		
 		// Do not call directly even in child
 		virtual void VideoCallback(void *video, uint32_t timestamp) = 0;
 		// Do not call directly even in child
