@@ -31,3 +31,8 @@ else()
   endif()
   target_link_libraries(OKPCLCorral freenect ${CMAKE_THREAD_LIBS_INIT} ${MATH_LIB} ${PCL_LIBRARIES})
 endif()
+
+project(pcl_visualizer_viewports)
+
+add_executable (pcl_visualizer_demo pcl_visualizer_demo.cpp)
+target_link_libraries (pcl_visualizer_demo ${PCL_LIBRARIES})
