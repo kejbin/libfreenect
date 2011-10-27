@@ -2,6 +2,8 @@
 
 
 #include <iostream>
+#include <vector>
+#include <ctime>
 
 #include <boost/thread/thread.hpp>
 #include "pcl/common/common_headers.h"
@@ -15,6 +17,8 @@
 #include "pcl/filters/voxel_grid.h"
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/surface/mls.h>
+#include "pcl/octree/octree.h"
+
 
 // --------------
 // -----Help-----
@@ -263,6 +267,24 @@ boost::shared_ptr<pcl::visualization::PCLVisualizer> bgTestVis (pcl::PointCloud<
   return (viewer);
 }
 
+boost::shared_ptr<pcl::visualization::PCLVisualizer> octVis (pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr fullcloud, pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr fgcloud, pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr bgcloud)
+{
+  // --------------------------------------------
+  // -----Open 3D viewer and add point cloud-----
+  // --------------------------------------------
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  viewer->setBackgroundColor (0, 0, 0);
+  pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(fullcloud);
+  viewer->addPointCloud<pcl::PointXYZRGB> (fullcloud, rgb, "sample cloud");
+  viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");  //9 for voxels
+  viewer->addCoordinateSystem (1.0);
+  viewer->initCameraParameters ();
+  viewer->registerKeyboardCallback (kEO_BG, (void*)&viewer);
+  whichBG = 0;
+  switchBG = false;
+  return (viewer);
+}
+
 
 // --------------
 // -----Main-----
@@ -282,7 +304,7 @@ main (int argc, char** argv)
     return 0;
   }
   bool simple(false), rgb(false), custom_c(false), normals(false),
-    shapes(false), viewports(false), interaction_customization(false), mlsdemo(false), bgdemo(false);
+    shapes(false), viewports(false), interaction_customization(false), mlsdemo(false), bgdemo(false), octdemo(false);
   if (pcl::console::find_argument (argc, argv, "-s") >= 0)
   {
     simple = true;
@@ -328,6 +350,11 @@ main (int argc, char** argv)
     bgdemo = true;
     std::cout << "BG example\n";
   }
+  else if (pcl::console::find_argument (argc, argv, "-o") >= 0)
+  {
+    octdemo = true;
+    std::cout << "Oct example\n";
+  }
   else
   {
     printUsage (argv[0]);
@@ -371,7 +398,7 @@ main (int argc, char** argv)
     return (-1);
   }
   
-  if (bgdemo) {
+  if (bgdemo || octdemo) {
   	if (pcl::io::loadPCDFile<pcl::PointXYZRGB> (bg_name, *bg_points) == -1) //* load the file
   	{
     	PCL_ERROR ("Couldn't read file.\n");
@@ -470,7 +497,6 @@ main (int argc, char** argv)
 	  		}
 	  	}
 	} 
-	
 	//Outlier Removal
   	pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> sor;
   	sor.setInputCloud (fg_points);
@@ -479,7 +505,60 @@ main (int argc, char** argv)
   	sor.filter (*fg_points);
   	sor.setInputCloud (true_bg_points);
   	sor.filter (*true_bg_points);
-}
+}	
+	if(octdemo)
+	{
+		//BG Subtraction using Octrees!
+		float resolution = 50.0;
+		// Instantiate octree-based point cloud change detection class
+		pcl::octree::OctreePointCloudChangeDetector<pcl::PointXYZRGB> octree (resolution);
+		
+		// Add points from background to octree
+  		octree.setInputCloud (bg_points);
+  		octree.addPointsFromInputCloud ();
+  		std::cout << "Leaf count for BG: " << octree.getLeafCount() << std::endl;
+  		
+  		// Switch octree buffers: This resets octree but keeps previous tree structure in memory.
+  		octree.switchBuffers ();
+  		
+  		// Add points from the mixed data to octree
+  		octree.setInputCloud (point_cloud_ptr);
+  		octree.addPointsFromInputCloud ();
+  		std::cout << "Leaf count for Full Image: " << octree.getLeafCount() << std::endl;
+  		
+  		std::vector<int> newPointIdxVector;
+		
+		// Get vector of point indices from octree voxels which did not exist in previous buffer
+		octree.getPointIndicesFromNewVoxels (newPointIdxVector);
+		
+		for (size_t i = 0; i < newPointIdxVector.size(); ++i)
+		{
+			//std::cout << i << "," << newPointIdxVector[i] << "," << point_cloud_ptr->points[newPointIdxVector[i]].x << "," << point_cloud_ptr->points[newPointIdxVector[i]].y << "," << point_cloud_ptr->points[newPointIdxVector[i]].z << std::endl;
+			fg_points->push_back(point_cloud_ptr->points[newPointIdxVector[i]]);
+		}
+		
+		// Switch octree buffers: This resets octree but keeps previous tree structure in memory.
+  		octree.switchBuffers ();
+		// Add points from background to octree
+  		octree.setInputCloud (fg_points);
+  		octree.addPointsFromInputCloud ();
+		// Switch octree buffers: This resets octree but keeps previous tree structure in memory.
+  		octree.switchBuffers ();
+		// Add points from background to octree
+  		octree.setInputCloud (point_cloud_ptr);
+  		octree.addPointsFromInputCloud ();
+
+  		
+  		// Get vector of point indices from octree voxels which did not exist in previous buffer
+		octree.getPointIndicesFromNewVoxels (newPointIdxVector);
+		
+		for (size_t i = 0; i < newPointIdxVector.size(); ++i)
+		{
+			//std::cout << i << "," << newPointIdxVector[i] << "," << point_cloud_ptr->points[newPointIdxVector[i]].x << "," << point_cloud_ptr->points[newPointIdxVector[i]].y << "," << point_cloud_ptr->points[newPointIdxVector[i]].z << std::endl;
+			true_bg_points->push_back(bg_points->points[newPointIdxVector[i]]);
+		}
+		
+	}	
 
   // ----------------------------------------------------------------
   // -----Calculate surface normals with a search radius of 0.05-----
@@ -536,13 +615,17 @@ main (int argc, char** argv)
   {
   	viewer = bgTestVis(point_cloud_ptr, fg_points, true_bg_points);
   }
+  else if (octdemo)
+  {
+  	viewer = octVis(point_cloud_ptr, fg_points, true_bg_points);
+  }	
 
   //--------------------
   // -----Main loop-----
   //--------------------
   while (!viewer->wasStopped ())
   {
-    if(bgdemo && switchBG) {
+    if((bgdemo || octdemo) && switchBG) {
     	if (whichBG == 0) {
     		whichBG = 1;
     		viewer->updatePointCloud(point_cloud_ptr, "sample cloud");
