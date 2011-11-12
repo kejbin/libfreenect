@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include <libfreenect.h>
+//#include <libfreenect.h>
 #include <libfreenect-registration.h>
 #include <stdexcept>
 #include <map>
