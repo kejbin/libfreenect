@@ -359,9 +359,14 @@ int freenect_sync_get_video(void **video, uint32_t *timestamp, int index, freene
 		printf("Error: Invalid index [%d]\n", index);
 		return -1;
 	}
-	if (!thread_running || !kinects[index] || kinects[index]->video.fmt != fmt)
-		if (setup_kinect(index, fmt, 0))
+	if (!thread_running || !kinects[index] || kinects[index]->video.fmt != fmt) {
+		if (setup_kinect(index, fmt, 0)) {
 			return -1;
+		}
+		else {
+			change_video_format(kinects[index], (freenect_video_format)fmt);
+		}
+	}
 	sync_get(video, timestamp, &kinects[index]->video);
 	return 0;
 }

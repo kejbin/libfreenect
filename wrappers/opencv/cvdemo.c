@@ -55,6 +55,7 @@ IplImage *GlViewColor(IplImage *depth)
 
 int main(int argc, char **argv)
 {
+	
 	while (cvWaitKey(10) < 0) {
 		IplImage *image = freenect_sync_get_rgb_cv(0);
 		if (!image) {
