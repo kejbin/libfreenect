@@ -1,7 +1,9 @@
 ######################################################################################
 # OpenCV Interface
 ######################################################################################
-FIND_PACKAGE( OpenCV REQUIRED )
+
+find_package(OpenCV REQUIRED)
+
 add_library (freenect_cv SHARED libfreenect_cv.c)
 set_target_properties (freenect_cv PROPERTIES
   VERSION ${PROJECT_VER}
