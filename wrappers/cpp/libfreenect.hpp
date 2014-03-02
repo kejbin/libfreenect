@@ -30,7 +30,7 @@
 #include <sstream>
 #include <map>
 #include <pthread.h>
-#include <libusb.h>
+#include <libusb-1.0/libusb.h>
 
 namespace Freenect {
 	class Noncopyable {
@@ -138,6 +138,9 @@ namespace Freenect {
 			return freenect_set_flag(m_dev, flag, value ? FREENECT_ON : FREENECT_OFF);
 		}
 		const freenect_device *getDevice() {
+			return m_dev;
+		}
+		freenect_device *getDevicePtr() {
 			return m_dev;
 		}
 		// Do not call directly even in child
