@@ -25,7 +25,7 @@
  */
 #pragma once
 
-#include "libfreenect.h"
+#include <libfreenect_registration.h>
 #include <stdexcept>
 #include <sstream>
 #include <map>
@@ -127,9 +127,11 @@ namespace Freenect {
 				m_depth_resolution = requested_resolution;
 			}
 		}
-		freenect_depth_format getDepthFormat() {
+		freenect_depth_format getDepthFormat(){
 			return m_depth_format;
 		}
+
+
 		freenect_resolution getDepthResolution() {
 			return m_depth_resolution;
 		}
